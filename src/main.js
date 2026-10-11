@@ -150,6 +150,32 @@ class Game {
     this.last = performance.now();
     renderer.setAnimationLoop((t) => this.loop(t));
     window.__game = this;
+    // simulation accélérée sans rendu (tests automatisés)
+    window.__sim = (seconds, keys = [], aim = null, step = 1 / 30) => {
+      const n = Math.round(seconds / step);
+      for (let i = 0; i < n; i++) {
+        const k = new Set(keys);
+        if (aim) {
+          const p = this.player.phys;
+          const dx = aim[0] - p.pos.x, dz = aim[1] - p.pos.z;
+          const ang = Math.atan2(dx * p.right.x + dz * p.right.z, dx * p.fwd.x + dz * p.fwd.z);
+          this.input.padAxes[0] = Math.max(-1, Math.min(1, ang * 2.5));
+        } else this.input.padAxes[0] = 0;
+        this.input.keys = k;
+        if (this.state === 'play') this.updatePlay(step);
+        this.time += step;
+        this.input.endFrame();
+      }
+      this.updateWorld(step);
+      const ev = this.events;
+      return {
+        state: this.state, pos: this.player.phys.pos.toArray().map((v) => Math.round(v)), kmh: Math.round(this.player.phys.speed * 3.6),
+        gear: this.player.phys.gear, up: +this.player.phys.up.y.toFixed(2), money: this.save.data.money,
+        event: ev.active ? { id: ev.active.id, phase: ev.phase, cp: ev.cpIndex, cps: ev.cps?.length, t: +ev.elapsed.toFixed(1), score: ev.score,
+          racers: ev.racers.map((r) => ({ n: r.name, p: Math.round(r.progress || 0), f: r.finished, kmh: Math.round(r.v.phys.speed * 3.6) })) } : null,
+        traffic: this.traffic.cars.length, menu: document.querySelector('#ui .h2')?.textContent || null,
+      };
+    };
     this.debugParams();
     window.__status = () => ({ state: this.state, pending: this.pool.pending, pos: this.player.phys.pos.toArray().map((v) => +v.toFixed(1)), kmh: +(this.player.phys.speed * 3.6).toFixed(1), calls: this.renderer.info.render.calls, tris: this.renderer.info.render.triangles });
   }
@@ -344,6 +370,9 @@ class Game {
     if (ph.inWater === 0) this._splashed = false;
     if (ph.inWater > 2.5) { this.hud.notify('Véhicule à l\'eau ! Retour sur la route.'); this.respawnOnRoad(); }
 
+    // voiture sur le toit : invite à la replacer
+    if (ph.up.y < 0.35 && ph.speed < 2) { this._flipT = (this._flipT || 0) + dt; if (this._flipT > 1.5 && !this._flipHint) { this._flipHint = true; this.hud.notify(`Appuyez sur ${inp.label('reset')} pour remettre la voiture sur ses roues`); } }
+    else { this._flipT = 0; this._flipHint = false; }
     this.stunts.update(dt, P);
     this.events.update(dt);
     this.traffic.update(dt);

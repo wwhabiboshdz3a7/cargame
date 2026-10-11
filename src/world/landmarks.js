@@ -359,10 +359,11 @@ export function buildLandmarks(scene, world, colliders, quality, cityInfo) {
     for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * (SP.x1 - SP.x0) / 10, uv.getY(k) * (SP.z1 - SP.z0) / 10);
     kit.mesh('tarmac', g, (SP.x0 + SP.x1) / 2, SY + 0.04, (SP.z0 + SP.z1) / 2);
     // looping (entrée inclinée de 6°)
-    const loopYaw = Math.PI + 0.105; // vers le nord, légèrement décalé
-    kit.loop(9800, SY, -4700, loopYaw, 12, 7.5, 56, 2 * Math.PI * 12 * Math.tan(0.105));
-    extras.loop = { x: 9800, z: -4700, yaw: loopYaw };
-    for (let k = 1; k < 8; k++) kit.mesh('yellowPaint', new THREE.PlaneGeometry(0.5, 6).rotateX(-Math.PI / 2), 9800 - Math.sin(loopYaw) * k * 18, SY + 0.06, -4700 - Math.cos(loopYaw) * k * 18, loopYaw);
+    // plan de la boucle orienté nord ; l'approche est inclinée de 6° (hélice) pour sortir à côté de l'entrée
+    const beta = 0.17;
+    kit.loop(9800, SY, -4700, Math.PI, 12, 9, 56, 2 * Math.PI * 12 * Math.tan(beta));
+    extras.loop = { x: 9800, z: -4700, yaw: beta };
+    for (let k = 1; k < 10; k++) kit.mesh('yellowPaint', new THREE.PlaneGeometry(0.5, 6).rotateX(-Math.PI / 2), 9800 + Math.sin(beta) * k * 18, SY + 0.06, -4700 + Math.cos(beta) * k * 18, -beta);
     // kickers (petit, moyen, grand) + réceptions
     const kicker = (x, z, yaw, R, ang, w, gap, landH) => {
       const prof = [];
@@ -425,9 +426,9 @@ export function buildLandmarks(scene, world, colliders, quality, cityInfo) {
 
   // =========================================================== MÉGA TREMPLIN DU DÉSERT
   {
-    const my = regionY(world, 'megaramp');
     const A2 = MEGA_RAMP_AREA;
-    const x = A2.x1 - 120, z = (A2.z0 + A2.z1) / 2;
+    const x = A2.x0 + 700, z = (A2.z0 + A2.z1) / 2;
+    const my = world.height(x, z);
     const prof = [[-40, 0]];
     for (let i = 0; i <= 14; i++) { const a = (i / 14) * 0.52; prof.push([60 * Math.sin(a), 60 * (1 - Math.cos(a))]); }
     kit.ramp(x, my, z, -Math.PI / 2, 18, prof, { mat: 'stone' });
@@ -440,7 +441,7 @@ export function buildLandmarks(scene, world, colliders, quality, cityInfo) {
       sm.position.set(px, my + 3.4, z + 14); sm.rotation.y = Math.PI / 2;
       group.add(sm);
     }
-    extras.megaRamp = { x: x + 400, z, yaw: -Math.PI / 2, lipX: x - 30.8, y: my };
+    extras.megaRamp = { x: x + 600, z, yaw: -Math.PI / 2, lipX: x - 30.8, y: my };
     extras.flags.push([x + 50, my, z - 25], [x + 50, my, z + 25]);
   }
 

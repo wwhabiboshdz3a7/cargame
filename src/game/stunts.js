@@ -158,6 +158,22 @@ export class Stunts {
       this.twoWheels = 0;
     }
 
+    // ---------------- looping et wall ride (roues au contact, voiture inclinée / à l'envers)
+    if (grounded >= 2 && p.up.y < -0.75) this.inverted = true;
+    if (this.inverted && grounded >= 3 && p.up.y > 0.85) {
+      this.inverted = false;
+      this.add(2500 + speed * 10, 'LOOPING !', `${(speed * 3.6).toFixed(0)} km/h`, '#ff5ac8');
+    }
+    if (grounded === 0 && this.inverted && !this.air) this.inverted = false;
+    if (grounded >= 3 && p.up.y < 0.45 && p.up.y > -0.6 && speed > 12) {
+      this.wall = (this.wall || 0) + dt;
+      if (this.wall > 0.8) g.hud.drift(this.wall * 300, 0, 'WALL RIDE');
+    } else if (this.wall) {
+      if (this.wall > 1.2 && !this.inverted) this.add(this.wall * 380, 'WALL RIDE', `${this.wall.toFixed(1)} s`, '#4cc9f0');
+      if (!this.drift) g.hud.drift(null);
+      this.wall = 0;
+    }
+
     // ---------------- grande vitesse
     if (speed * 3.6 > 220 && grounded >= 3) {
       this.highSpeed += dt;

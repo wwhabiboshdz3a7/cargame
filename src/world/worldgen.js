@@ -222,9 +222,12 @@ export class WorldGen {
           while (r.ss[lo] < r.ss[i] - W) { sum -= nat[lo]; lo++; }
           ys[i] = Math.max(2.5, sum / (hi - lo));
         }
-        // ancrage sur les noeuds déjà fixés
+        // ancrage sur les noeuds déjà fixés (+ extrémités libres calées sur le terrain)
         const fixed = new Uint8Array(n);
         const pins = r.nodes.filter((nd) => nodeY[nd.name] !== undefined).map((nd) => ({ i: nd.i, d: nodeY[nd.name] - ys[nd.i] }));
+        for (const end of [0, n - 1]) {
+          if (!pins.some((p) => p.i === end)) pins.push({ i: end, d: Math.max(2.5, nat[end]) - ys[end] });
+        }
         pins.sort((a, b) => a.i - b.i);
         if (pins.length) {
           const corr = new Float64Array(n);

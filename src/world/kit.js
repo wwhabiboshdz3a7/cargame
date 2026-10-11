@@ -30,13 +30,13 @@ export class Kit {
   }
 
   // Boîte orientée par une base (ax, ay, az : Vector3 unitaires), centre c, demi-tailles h
-  obb(matKey, c, h, ax, ay, az, { collide = true, surf = 5, tile = 4, visual = true } = {}) {
+  obb(matKey, c, h, ax, ay, az, { collide = true, surf = 5, tile = 4, visual = true, kind = 'static', data = null } = {}) {
     if (visual && matKey) {
       const g = boxUV(new THREE.BoxGeometry(h.x * 2, h.y * 2, h.z * 2), h.x * 2, h.y * 2, h.z * 2, tile);
       g.applyMatrix4(new THREE.Matrix4().makeBasis(ax, ay, az).setPosition(c));
       this.add(matKey, g);
     }
-    if (collide) this.col.addBox({ c: [c.x, c.y, c.z], h: [h.x, h.y, h.z], axes: [ax.toArray(), ay.toArray(), az.toArray()], surf });
+    if (collide) this.col.addBox({ c: [c.x, c.y, c.z], h: [h.x, h.y, h.z], axes: [ax.toArray(), ay.toArray(), az.toArray()], surf, kind, data });
   }
 
   // Boîte posée (base au sol à y), tournée de yaw
@@ -69,7 +69,7 @@ export class Kit {
       const T = thick ?? Math.max(0.6, (h0 + h1) / 2 + 0.6);
       const c = p0.clone().add(p1).multiplyScalar(0.5).addScaledVector(n, -T / 2);
       const last = i === profile.length - 2 && lipMat;
-      this.obb(last ? lipMat : mat, c, new THREE.Vector3(width / 2, T / 2, len / 2 + 0.03), l, n, t, { surf });
+      this.obb(last ? lipMat : mat, c, new THREE.Vector3(width / 2, T / 2, len / 2 + 0.03), l, n, t, { surf, kind: 'ramp' });
     }
   }
 
@@ -79,7 +79,7 @@ export class Kit {
     const l = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
     const o = new THREE.Vector3(x, y0, z);
     const P = (th) => o.clone().addScaledVector(d, R * Math.sin(th)).addScaledVector(UP, R * (1 - Math.cos(th))).addScaledVector(l, (offset * th) / (Math.PI * 2));
-    const thick = 0.7;
+    const thick = 1.6;
     for (let i = 0; i < N; i++) {
       const a = (i / N) * Math.PI * 2, b = ((i + 1) / N) * Math.PI * 2, m = (a + b) / 2;
       const pa = P(a), pb = P(b);
@@ -90,8 +90,11 @@ export class Kit {
       // orthogonalisation
       n.addScaledVector(t, -n.dot(t)).normalize();
       const ax = new THREE.Vector3().crossVectors(n, t).normalize();
-      const c = pa.clone().add(pb).multiplyScalar(0.5).addScaledVector(n, -thick / 2);
-      this.obb(i % 4 === 0 ? 'chevron' : mat, c, new THREE.Vector3(width / 2, thick / 2, len / 2 + 0.06), ax, n, t, { tile: 4 });
+      const mid = pa.clone().add(pb).multiplyScalar(0.5);
+      const c = mid.clone().addScaledVector(n, -thick / 2);
+      // guide latéral : la voiture est ramenée vers l'axe de l'hélice
+      const guide = { x: mid.x, y: mid.y, z: mid.z, l: [l.x, l.y, l.z] };
+      this.obb(i % 4 === 0 ? 'chevron' : mat, c, new THREE.Vector3(width / 2, thick / 2, len / 2 + 0.06), ax, n, t, { tile: 4, kind: 'ramp', data: { guide } });
     }
   }
 
@@ -106,7 +109,7 @@ export class Kit {
       const segLen = 2 * Math.sin((b - a) / 2) * (R + Math.cos(bank) * w);
       const thick = 0.8;
       const c = new THREE.Vector3(cx, y0, cz).addScaledVector(r, R + Math.cos(bank) * w / 2).addScaledVector(UP, Math.sin(bank) * w / 2).addScaledVector(n, -thick / 2);
-      this.obb(i % 3 === 0 ? 'chevron' : mat, c, new THREE.Vector3(w / 2, thick / 2, segLen / 2 + 0.1), ax, n, t, { tile: 4 });
+      this.obb(i % 3 === 0 ? 'chevron' : mat, c, new THREE.Vector3(w / 2, thick / 2, segLen / 2 + 0.1), ax, n, t, { tile: 4, kind: 'ramp' });
     }
   }
 

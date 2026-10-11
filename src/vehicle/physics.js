@@ -188,7 +188,12 @@ export class VehiclePhysics {
       surf = w.surf;
     }
     const tb = this.colliders.raycast(o.x, o.y, o.z, d.x, d.y, d.z, tHit >= 0 ? tHit : maxT, _n);
-    if (tb < Infinity) { outN.copy(_n); this.hitSurf = this.colliders.hitSurf; return tb; }
+    if (tb < Infinity) {
+      outN.copy(_n); this.hitSurf = this.colliders.hitSurf;
+      const gd = this.colliders.hitBox?.data?.guide;
+      if (gd) this.guide = gd;
+      return tb;
+    }
     this.hitSurf = surf;
     return tHit;
   }
@@ -278,6 +283,7 @@ export class VehiclePhysics {
 
     // ---------------- roues
     this.groundedWheels = 0;
+    this.guide = null;
     const down = _v1.copy(this.up).negate();
     const mount = _v2;
     const maxLen = this.rest + R;
@@ -302,7 +308,7 @@ export class VehiclePhysics {
       w.point.copy(mount).addScaledVector(down, t);
       const compVel = (w.comp - w.prevComp) / dt;
       let Fs = this.k * w.comp + this.c * compVel;
-      if (w.comp > this.travel) Fs += this.k * 12 * (w.comp - this.travel) + this.c * 3 * Math.max(0, compVel);
+      if (w.comp > this.travel) Fs += this.k * 30 * (w.comp - this.travel) + this.c * 4 * Math.max(0, compVel);
       w.Fs = Math.max(0, Fs);
     }
     // barres anti-roulis
@@ -393,6 +399,17 @@ export class VehiclePhysics {
     }
     for (const w of this.wheels) w.angle = (w.angle + w.spin * dt) % (Math.PI * 2);
 
+    // ---------------- guidage latéral (looping)
+    if (this.guide) {
+      const gd = this.guide;
+      const ex = this.pos.x - gd.x, ey = this.pos.y - gd.y, ez = this.pos.z - gd.z;
+      const e = ex * gd.l[0] + ey * gd.l[1] + ez * gd.l[2];
+      const de = this.prevGuideE !== undefined ? (e - this.prevGuideE) / dt : 0;
+      this.prevGuideE = e;
+      const f = (-e * 14 - de * 5) * this.mass;
+      this.force.x += gd.l[0] * f; this.force.y += gd.l[1] * f; this.force.z += gd.l[2] * f;
+    } else this.prevGuideE = undefined;
+
     // ---------------- aérodynamique
     const rho = 1.225;
     if (speed > 0.1) {
@@ -413,6 +430,16 @@ export class VehiclePhysics {
         .addScaledVector(this.fwd, -ctl.airRoll * this.inertia.z * k);
       this.torque.add(_v3);
       this.angVel.multiplyScalar(1 - dt * 0.15);
+      // aide à la réception : remet la voiture à plat si le joueur ne fait pas de figure
+      const airInput = Math.abs(ctl.airPitch) > 0.1 || Math.abs(ctl.airYaw) > 0.1 || Math.abs(ctl.airRoll) > 0.1;
+      if (this.assist.steer && !airInput && this.airTime > 0.25 && this.up.y > 0.2) {
+        const sp = this.vel.length() || 1;
+        const pitchErr = this.fwd.y - this.vel.y / sp * 0.6;
+        const kR = 5, kD = 2.2;
+        const wr = this.angVel.dot(this.right), wf = this.angVel.dot(this.fwd);
+        this.torque.addScaledVector(this.fwd, (this.right.y * kR - wf * kD) * this.inertia.z);
+        this.torque.addScaledVector(this.right, (-pitchErr * kR - wr * kD) * this.inertia.x);
+      }
     } else {
       this.airTime = 0;
       // stabilité (ESC simplifiée)
@@ -481,12 +508,13 @@ export class VehiclePhysics {
         if (pw.y < h) {
           w.normal(pw.x, pw.z, n, 0.6);
           const depth = (h - pw.y) * n.y;
-          contacts.push({ p: pw.clone(), n: n.clone(), d: depth, mu: 0.55 });
+          contacts.push({ p: pw.clone(), n: n.clone(), d: depth, mu: 0.3 });
         }
       }
       for (const b of boxes) {
-        const d = Colliders.pointInBox(b, pw.x, pw.y, pw.z, n);
-        if (d > 0) contacts.push({ p: pw.clone(), n: n.clone(), d, mu: 0.4, box: b });
+        const ramp = b.kind === 'ramp';
+        const d = ramp ? Colliders.pointInRamp(b, pw.x, pw.y, pw.z, n) : Colliders.pointInBox(b, pw.x, pw.y, pw.z, n);
+        if (d > 0) contacts.push({ p: pw.clone(), n: n.clone(), d, mu: ramp ? 0.04 : 0.4, box: b, ramp });
       }
     }
     // cylindres (arbres, poteaux) contre le rectangle de la caisse
@@ -529,11 +557,11 @@ export class VehiclePhysics {
         const vp = this.velocityAt(c.p, _v2);
         const vn = vp.dot(c.n);
         if (vn < 0) {
-          if (it === 0) this.impact = Math.max(this.impact, -vn);
+          if (it === 0 && !c.ramp) this.impact = Math.max(this.impact, -vn);
           const rxn = _v3.subVectors(c.p, this.pos).cross(c.n);
           this.invIWorld(rxn, _v4);
           const k = this.invMass + _v4.cross(_v3.subVectors(c.p, this.pos)).dot(c.n);
-          const e = -vn > 3 ? 0.18 : 0;
+          const e = c.ramp ? 0 : -vn > 3 ? 0.18 : 0;
           const jn = (-(1 + e) * vn) / k;
           const J = c.n.clone().multiplyScalar(jn);
           // frottement

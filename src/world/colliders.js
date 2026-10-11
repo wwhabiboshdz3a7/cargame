@@ -138,6 +138,17 @@ export class Colliders {
     return hit ? best : Infinity;
   }
 
+  // Rampe : surface à sens unique (la moitié haute renvoie toujours la normale du dessus)
+  static pointInRamp(b, x, y, z, outN) {
+    const px = x - b.cx, py = y - b.cy, pz = z - b.cz;
+    const lx = px * b.ax[0] + py * b.ax[1] + pz * b.ax[2];
+    const ly = px * b.ay[0] + py * b.ay[1] + pz * b.ay[2];
+    const lz = px * b.az[0] + py * b.az[1] + pz * b.az[2];
+    if (Math.abs(lx) >= b.hx || Math.abs(ly) >= b.hy || Math.abs(lz) >= b.hz) return 0;
+    if (ly > -b.hy * 0.2 || b.hy < 0.6) { outN.x = b.ay[0]; outN.y = b.ay[1]; outN.z = b.ay[2]; return b.hy - ly; }
+    return Colliders.pointInBox(b, x, y, z, outN);
+  }
+
   // Pénétration d'un point dans une boîte : renvoie la profondeur (>0) et remplit outN
   static pointInBox(b, x, y, z, outN) {
     const px = x - b.cx, py = y - b.cy, pz = z - b.cz;
