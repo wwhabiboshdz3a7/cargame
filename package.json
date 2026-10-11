@@ -1,0 +1,19 @@
+{
+  "name": "dz-drive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DZ DRIVE — jeu de conduite en monde ouvert en Algérie (autoroute, côte, ville, forêt, désert) dans le navigateur.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.56.1",
+    "vite": "8.3.4"
+  }
+}
