@@ -18,7 +18,21 @@ export class Traffic {
     const w = game.world;
     // arêtes utilisables
     this.edges = w.graph.edges.filter((e) => { const t = w.roads[e.road].type; return t !== 'piste'; });
-    this.edgeCenters = this.edges.map((e) => { const r = w.roads[e.road]; const m = (e.i0 + e.i1) >> 1; return [r.xs[m], r.zs[m]]; });
+    this.edgeSet = new Set(this.edges);
+    // points d'ancrage tous les ~60 m (grille spatiale de 250 m)
+    this.anchors = new Map();
+    for (const e of this.edges) {
+      const r = w.roads[e.road];
+      for (let s = 10; s < e.len - 10; s += 60) {
+        const sAbs = r.ss[e.i0] + s;
+        let i = e.i0;
+        while (i < e.i1 && r.ss[i + 1] < sAbs) i++;
+        const x = r.xs[i], z = r.zs[i];
+        const k = Math.floor(x / 250) * 1000 + Math.floor(z / 250);
+        if (!this.anchors.has(k)) this.anchors.set(k, []);
+        this.anchors.get(k).push({ e, s, x, z });
+      }
+    }
     this.timer = 0;
   }
 
@@ -73,19 +87,25 @@ export class Traffic {
   spawn() {
     const g = this.game;
     const p = g.player.phys.pos;
-    for (let tries = 0; tries < 12; tries++) {
-      const k = Math.floor(Math.random() * this.edges.length);
-      const [ex, ez] = this.edgeCenters[k];
-      const d = Math.hypot(ex - p.x, ez - p.z);
-      if (d > 900 || d < 120) continue;
-      const e = this.edges[k];
+    const cx = Math.floor(p.x / 250), cz = Math.floor(p.z / 250);
+    const cand = [];
+    for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+      const list = this.anchors.get((cx + dx) * 1000 + (cz + dz));
+      if (!list) continue;
+      for (const a of list) {
+        const d = Math.hypot(a.x - p.x, a.z - p.z);
+        if (d > 170 && d < 720) cand.push(a);
+      }
+    }
+    for (let tries = 0; tries < 6 && cand.length; tries++) {
+      const a = cand[Math.floor(Math.random() * cand.length)];
+      const e = a.e;
       const r = g.world.roads[e.road];
       const lanes = ROAD_TYPES[r.type].lanes;
-      const c = { edge: e, dir: Math.random() < 0.5 ? 1 : -1, lane: Math.floor(Math.random() * lanes), s: Math.random() * e.len, speed: 0, mode: 'kin', pose: {} };
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const c = { edge: e, dir, lane: Math.floor(Math.random() * lanes), s: dir > 0 ? a.s : e.len - a.s, speed: 0, mode: 'kin', pose: {} };
       this.edgePose(c, c.pose);
-      const dp = Math.hypot(c.pose.x - p.x, c.pose.z - p.z);
-      if (dp < 150 || dp > 750) continue;
-      if (this.cars.some((o) => o.edge === e && o.dir === c.dir && o.lane === c.lane && Math.abs(o.s - c.s) < 25)) continue;
+      if (this.cars.some((o) => o.edge === e && o.dir === c.dir && o.lane === c.lane && Math.abs(o.s - c.s) < 30)) continue;
       const vmax = ROAD_TYPES[r.type].speed;
       c.v0 = vmax * (0.8 + Math.random() * 0.3);
       c.speed = c.v0 * 0.8;
@@ -113,7 +133,7 @@ export class Traffic {
     const e = c.edge;
     const nodeId = c.dir > 0 ? e.b : e.a;
     const node = G.nodes[nodeId];
-    const options = node.edges.map((id) => G.edges[id]).filter((o) => o !== e && this.edges.includes(o));
+    const options = node.edges.map((id) => G.edges[id]).filter((o) => o !== e && this.edgeSet.has(o));
     if (!options.length) { // demi-tour
       c.dir = -c.dir; c.s = 0;
       return;

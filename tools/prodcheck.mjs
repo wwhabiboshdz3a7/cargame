@@ -1,0 +1,15 @@
+import { chromium } from 'playwright-core';
+import { preview } from 'vite';
+const server = await preview({ preview: { port: 4178 }, logLevel: 'error' });
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 800, height: 450 } });
+const logs = [];
+page.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !m.text().includes('AudioContext')) logs.push(m.text().slice(0, 300)); });
+page.on('pageerror', (e) => logs.push('[pageerror] ' + e.message));
+await page.goto('http://localhost:4178/?q=low');
+await page.waitForFunction(() => window.__game && window.__game.state !== 'loading', null, { timeout: 120000 });
+const st = await page.evaluate(() => ({ workers: window.__game.pool.workers.length, main: !!window.__game.pool.mainThread, state: window.__game.state, mapReady: window.__game.minimap.ready }));
+console.log(JSON.stringify(st));
+console.log(logs.join('\n'));
+await browser.close();
+server.httpServer.close();

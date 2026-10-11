@@ -13,7 +13,7 @@ function fresh() {
   const cars = {};
   for (const c of CARS) cars[c.id] = { owned: c.price === 0, cfg: defaultConfig(c) };
   return {
-    version: 1, money: 1500000, selected: 'atlas', cars, records: {}, medals: {}, collected: [], discovered: [],
+    version: 1, money: 2500000, selected: 'atlas', cars, records: {}, medals: {}, collected: [], discovered: [],
     stats: { distance: 0, bestJump: 0, bestDrift: 0, topSpeed: 0, flips: 0, races: 0, wins: 0, stuntPoints: 0 },
     settings: { ...DEFAULT_SETTINGS }, lastPos: null,
   };

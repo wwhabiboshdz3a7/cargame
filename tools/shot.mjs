@@ -22,8 +22,8 @@ for (const st of steps) {
   if (st.down) await page.keyboard.down(st.down);
   if (st.up) await page.keyboard.up(st.up);
   if (st.click) await page.click(st.click);
-  if (st.eval) logs.push('[eval] ' + JSON.stringify(await page.evaluate(st.eval)));
-  if (st.shot) await page.screenshot({ path: st.shot });
+  if (st.eval) { try { logs.push('[eval] ' + JSON.stringify(await page.evaluate(st.eval))); } catch (e) { logs.push('[eval-error] ' + e.message.split('\n')[0]); } }
+  if (st.shot) await page.screenshot({ path: st.shot, timeout: 120000 });
 }
 const rest = +waitMs - (Date.now() - t0);
 if (rest > 0) await page.waitForTimeout(rest);

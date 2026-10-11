@@ -183,6 +183,7 @@ export class Garage {
     m.close();
     m.extraRoot = root;
     m.current = { el: root, onBack: () => this.close() };
+    m.skipFrames = 1;
     const again = focusKey && root.querySelector(`[data-key="${focusKey}"]`);
     m.setFocus(again || root.querySelector('.car-item.sel') || root.querySelector('.nav'), false);
   }

@@ -39,6 +39,7 @@ export class Menus {
     const scr = h('div', { class: 'screen ' + cls }, el);
     this.root.appendChild(scr);
     this.current = { el: scr, onBack };
+    this.skipFrames = 2; // ignore la touche qui a ouvert le menu
     const first = scr.querySelector('.nav.default') || scr.querySelector('.nav');
     if (first) this.setFocus(first, false);
     return scr;
@@ -87,6 +88,7 @@ export class Menus {
     const g = this.game;
     if (this.mapState) this.updateMap(dt);
     if (!this.current && !this.extraRoot) return;
+    if (this.skipFrames > 0) { this.skipFrames--; return; }
     const nav = g.input.nav();
     if (nav.dir) {
       const f = this.focus;
@@ -421,6 +423,7 @@ export class Menus {
 
   updateMap(dt) {
     const ms = this.mapState;
+    if (this.skipFrames > 0) return;
     const g = this.game;
     const inp = g.input;
     const c = ms.canvas;

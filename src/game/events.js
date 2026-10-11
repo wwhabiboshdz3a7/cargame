@@ -180,8 +180,9 @@ export class Events {
   nearbyEvent() {
     if (this.active) return null;
     const p = this.game.player.phys.pos;
-    for (const m of this.markers) if (Math.hypot(p.x - m.x, p.z - m.z) < 14) return m.ev;
-    return null;
+    let best = null, bd = 14;
+    for (const m of this.markers) { const d = Math.hypot(p.x - m.x, p.z - m.z); if (d < bd) { bd = d; best = m.ev; } }
+    return best;
   }
 
   interact() {

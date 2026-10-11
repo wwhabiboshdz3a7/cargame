@@ -122,9 +122,9 @@ export class Atmosphere {
     const sunColor = new THREE.Color().setRGB(1, lerp(0.97, 0.62, golden), lerp(0.92, 0.38, golden));
     const moonColor = new THREE.Color(0.55, 0.65, 0.95);
     this.sun.color.copy(sunColor).lerp(moonColor, this.night);
-    this.sun.intensity = lerp(0.2, lerp(2.4, 1.6, golden), day);
-    this.hemi.intensity = lerp(0.12, 0.32, day);
-    this.hemi.color.setRGB(lerp(0.25, 0.75, day), lerp(0.3, 0.83, day), lerp(0.5, 1.0, day));
+    this.sun.intensity = lerp(0.35, lerp(2.4, 1.6, golden), day);
+    this.hemi.intensity = lerp(0.22, 0.32, day);
+    this.hemi.color.setRGB(lerp(0.32, 0.75, day), lerp(0.38, 0.83, day), lerp(0.62, 1.0, day));
     this.hemi.groundColor.setRGB(lerp(0.08, 0.45, day), lerp(0.08, 0.38, day), lerp(0.1, 0.28, day));
 
     // brouillard
