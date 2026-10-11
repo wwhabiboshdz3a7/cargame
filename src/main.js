@@ -57,7 +57,7 @@ class Game {
     let q = new URLSearchParams(location.search).get('q') || this.settings.quality;
     if (q === 'auto') {
       const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-      q = mobile ? 'low' : (navigator.hardwareConcurrency || 4) >= 8 ? 'high' : 'medium';
+      q = mobile ? 'low' : (navigator.hardwareConcurrency || 4) >= 12 ? 'high' : 'medium';
     }
     return q;
   }

@@ -25,6 +25,8 @@ export class WorkerPool {
         w.idle = false;
         this.workers.push(w);
       }
+      // sécurité : si aucun worker ne répond, génération sur le thread principal
+      setTimeout(() => { if (!this.ready && !this.mainThread) { console.warn('Workers muets : bascule sur le thread principal'); this._fallback(); } }, 5000);
     } catch (err) {
       console.warn('Workers indisponibles', err);
       this._fallback();
